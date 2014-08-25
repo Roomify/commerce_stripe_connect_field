@@ -30,12 +30,5 @@ function commerce_stripe_connect_field_admin_settings() {
     '#description' => t("Development or Production app client_id"),
     '#required' => TRUE,
   );
-  $form['commerce_stripe_connect_field_app_fee'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Application fee'),
-    '#default_value' => variable_get('commerce_stripe_connect_field_app_fee'),
-    '#description' => t("Enter a fee to collect on each transaction (in cents)."),
-    '#required' => TRUE,
-  );
   return system_settings_form($form);
 }
