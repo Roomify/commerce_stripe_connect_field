@@ -1,0 +1,292 @@
+<?php
+/**
+ * @file
+ * Commerce Stripe Connect Field module.
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function commerce_stripe_connect_field_menu() {
+  $items = array();
+  $items['stripe/redirect'] = array(
+    'title' => 'Callback',
+    'type' => MENU_CALLBACK,
+    'page callback' => 'commerce_stripe_connect_field_process_redirect',
+    'access callback' => TRUE,
+    'file' => 'commerce_stripe_connect_field.redirect.inc',
+  );
+  $items['admin/config/services/stripefield'] = array(
+    'title' => 'Stripe Connect field',
+    'description' => 'Change these settings depending on test or live server',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('commerce_stripe_connect_field_admin_settings'),
+    'access arguments' => array('administer node'),
+    'file' => 'commerce_stripe_connect_field.admin.inc',
+    'type' => MENU_NORMAL_ITEM,
+  );
+  return $items;
+}
+
+/**
+ * Implements hook_field_info().
+ */
+function commerce_stripe_connect_field_field_info() {
+  return array(
+    // We name our field as the associative name of the array.
+    'commerce_stripe_connect_field' => array(
+      'label' => t('Stripe Connect'),
+      'description' => t('Stripe Connect token'),
+      'default_widget' => 'commerce_stripe_connect_field',
+      'default_formatter' => 'commerce_stripe_connect_simple_text',
+    ),
+  );
+}
+
+/**
+ * Implements hook_permission().
+ */
+function commerce_stripe_connect_field_permission() {
+  return array(
+    'connect stripe account' => array(
+      'title' => t('Connect Stripe account'),
+      'description' => t('Allow a site user to connect their Stripe account.'),
+    ),
+    'view stripe fields' => array(
+      'title' => t('Views Stripe Connect Fields'),
+      'description' => t('Allow a site user to view Stripe Connect field after a Stripe account is connected.'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_field_validate().
+ *
+ * This hook gives us a chance to validate content that's in our
+ * field. We're always going to validate, since the content is provided by the Stripe API,
+ * and never by a user.
+ *
+ */
+function commerce_stripe_connect_field_field_validate($entity_type, $entity, $field, $instance, $langcode, $items, &$errors) {
+  return TRUE;
+}
+
+/**
+ * Implements hook_field_is_empty().
+ *
+ * This allows us to bypass the requirement for custom field types.
+ * This function is not needed since no user input is user for our field.
+ */
+function commerce_stripe_connect_field_field_is_empty($item, $field) {
+  return FALSE;
+}
+
+/**
+ * Implements hook_field_formatter_info().
+ *
+ *
+ * @see commerce_stripe_connect_field_field_formatter_view()
+ */
+function commerce_stripe_connect_field_field_formatter_info() {
+  return array(
+    // This formatter just displays the text value.
+    'commerce_stripe_connect_simple_text' => array(
+      'label' => t('Simple returns formatter'),
+      'field types' => array('commerce_stripe_connect_field'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_field_formatter_view().
+ *
+ * This is jsut a dummy function that returns nothing. We have no need to display our vendor
+ * keys, nor would it smart to.
+ *
+ * @see commerce_stripe_connect_field_field_formatter_info()
+ */
+function commerce_stripe_connect_field_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
+  $element = '';
+  return $element;
+}
+
+/**
+ * Implements hook_field_widget_info().
+ *
+ *
+ * @see commerce_stripe_connect_field_field_widget_form()
+ */
+function commerce_stripe_connect_field_field_widget_info() {
+  return array(
+    'commerce_stripe_connect_field' => array(
+      'label' => t('Stripe Connect Field'),
+      'field types' => array('commerce_stripe_connect_field'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_field_widget_form().
+ *
+ * We have two different possible widgets, depending on whether the access token is set or not.
+ */
+function commerce_stripe_connect_field_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
+  if (!empty($items[$delta]['stripe_connect_access_token'])) {
+    $element['stripe_connect_access_token'] = array(
+      '#type' => 'textfield',
+      '#title' => 'Access Token',
+      '#access'  =>  user_access('view stripe fields'),
+      '#attributes' => array('disabled' => 'disabled'),
+      '#default_value' => isset($items[$delta]['stripe_connect_access_token']) ? $items[$delta]['stripe_connect_access_token'] : '',
+    );
+    $element['stripe_connect_user_id'] = array(
+      '#type' => 'textfield',
+      '#title' => 'Stripe User ID',
+      '#access'  =>  user_access('view stripe fields'),
+      '#attributes' => array('disabled' => 'disabled'),
+      '#default_value' => isset($items[$delta]['stripe_connect_user_id']) ? $items[$delta]['stripe_connect_user_id'] : '',
+    );
+    $element['stripe_connect_publishable_key'] = array(
+      '#type' => 'textfield',
+      '#title' => 'Stripe Publishable Key',
+      '#access'  =>  user_access('view stripe fields'),
+      '#attributes' => array('disabled' => 'disabled'),
+      '#default_value' => isset($items[$delta]['stripe_connect_publishable_key']) ? $items[$delta]['stripe_connect_publishable_key'] : '',
+    );
+      $element['stripe_customer_item'] = array(
+      '#type' => 'item',
+      '#markup' => '<p>Your Stripe account setup is complete.</p><a href="https://manage.stripe.com/login" class="" target="_blank">View your account</a> <span class="glyphicon glyphicon-new-window"></span><p>If you need to switch to a different Stripe account, you can <a href="https://manage.stripe.com/logout" target="_blank">sign out of Stripe</a> <span class="glyphicon glyphicon-new-window"></span> and the reconnect using the button below.</p>',
+    );
+    $element['stripe_connect_payments_account']['button'] = array(
+      '#type' => 'submit',
+      '#value' => t('Reset Stripe account'),
+      '#submit' => array('commerce_stripe_connect_field_reset_submit'),
+      '#skip_required_validation' => TRUE,
+    );
+  }
+  else {
+    $element['payments_account'] = array(
+      '#type' => 'container',
+      '#weight' => 10,
+    );
+    $element['payments_account']['button'] = array(
+      '#type' => 'submit',
+      '#value' => t('Connect with Stripe'),
+      '#submit' => array('commerce_stripe_connect_field_submit'),
+    );
+  }
+  return $element;
+}
+
+/**
+ * Callback for our Stripe Connect Field
+ */
+function commerce_stripe_connect_field_submit(&$form, &$form_state) {
+  // Proceed with normal validation and save/update based on entity type
+  if ($form_state['build_info']['form_id'] == 'page_node_form') {
+    node_form_submit($form, $form_state);
+    $redirect = 'node/' . $form_state['nid'] . '/edit';
+    $entity_type = 'node';
+    $eid = $form_state['nid'];
+  }
+  if ($form_state['build_info']['form_id'] == 'user_profile_form') {
+    user_profile_form_submit($form, $form_state);
+    $redirect = 'user/' . $form_state['build_info']['args'][0]->uid . '/edit';
+    $entity_type = 'user';
+    $eid = $form_state['build_info']['args'][0]->uid;
+  }
+  $client_id = variable_get('commerce_stripe_connect_field_client_id');
+
+  // Save user cookies so we know how to handle Stripe redirect callback
+  user_cookie_save(array('redirect' => $redirect, 'entity_type' => $entity_type, 'eid' => $eid, 'field' => $form_state['triggering_element']['#parents'][0]));
+
+  drupal_goto('https://connect.stripe.com/oauth/authorize?response_type=code&scope=read_write&client_id=' . $client_id);
+}
+
+/**
+ * Callback for reset button
+ */
+function commerce_stripe_connect_field_reset_submit(&$form, &$form_state) {
+  //Unset for node values
+  if ($form_state['build_info']['form_id'] == 'page_node_form') {
+  	$edit = node_load($form['#node']->nid);
+		unset($edit->field_stripe_connect[LANGUAGE_NONE][0]['access_token']);
+		unset($edit->field_stripe_connect['und'][0]['stripe_user_id']);
+		unset($edit->field_stripe_connect['und'][0]['stripe_publishable_key']);
+		//Field attach update
+  	field_attach_update('node', $edit);
+  }
+  // Unset for user values
+  if ($form_state['build_info']['form_id'] == 'user_profile_form') {
+		$edit = user_load($form_state['build_info']['args'][0]->uid);
+		unset($edit->field_stripe_connect['und'][0]['access_token']);
+		unset($edit->field_stripe_connect['und'][0]['stripe_user_id']);
+		unset($edit->field_stripe_connect['und'][0]['stripe_publishable_key']);
+		//Field attach update
+		field_attach_update('user', $edit);
+	}
+  // Set message
+  drupal_set_message(t('Your Stripe token has been reset'));
+}
+
+/**
+ * Implements hook_commerce_payment_method_info().
+ */
+function commerce_stripe_connect_field_commerce_payment_method_info() {
+  $payment_methods = array();
+
+  $payment_methods['commerce_stripe_connect'] = array(
+    'title' => _commerce_stripe_load_setting('display_title', t('Stripe Connect')),
+    'description' => t('Stripe Connect payment gateway'),
+    'active' => FALSE,
+    'terminal' => FALSE,
+    'offsite' => FALSE,
+  );
+
+  return $payment_methods;
+}
+
+/**
+ * Callback for Stipe Connect checkout form submission.
+ */
+function commerce_stripe_connect_field_submit_form_submit($payment_method, $pane_form, $pane_values, $order, $charge) {
+  // Check for required library
+  if (!commerce_stripe_load_library()) {
+    drupal_set_message(t('Error making the payment. Please contact the shop admin to proceed.'), 'error');
+    return FALSE;
+  }
+
+  // Begin assembling charge parameters.
+  Stripe::setApiKey($payment_method['settings']['secret_key']);
+  $c = array(
+    'amount' => $charge['amount'],
+    'currency' => $payment_method['settings']['stripe_currency'],
+    'card' => $_POST['stripeToken'],
+    'description' => t('Order Number: @order_number', array('@order_number' => $order->order_number)),
+  );
+
+  // Begin charge transaction
+  $transaction = commerce_payment_transaction_new('commerce_stripe', $order->order_id);
+  $transaction->instance_id = $payment_method['instance_id'];
+  $transaction->amount = $charge['amount'];
+  $transaction->currency_code = $charge['currency_code'];
+  try {
+    $response = Stripe_Charge::create($c);
+    $transaction->remote_id = $response->id;
+    $transaction->payload[REQUEST_TIME] = $response->__toJSON();
+    $transaction->message = t('Payment completed successfully.');
+    $transaction->status = COMMERCE_PAYMENT_STATUS_SUCCESS;
+    commerce_payment_transaction_save($transaction);
+  }
+  catch (Exception $e) {
+    drupal_set_message(t('We received the following error processing your card. Please enter your information again or try a different card.'), 'error');
+    drupal_set_message(check_plain($e->getMessage()), 'error');
+    watchdog('commerce_stripe', 'Following error received when processing card @stripe_error.', array('@stripe_error' => $e->getMessage()), WATCHDOG_NOTICE);
+    $transaction->remote_id = $e->getHttpStatus();
+    $transaction->payload[REQUEST_TIME] = $e->json_body;
+    $transaction->message = t('Card processing error: @stripe_error', array('@stripe_error' => $e->getMessage()));
+    $transaction->status = COMMERCE_PAYMENT_STATUS_FAILURE;
+    commerce_payment_transaction_save($transaction);
+    return FALSE;
+  }
+}

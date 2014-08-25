@@ -1,0 +1,8 @@
+name = Commerce Stripe Connect Field
+description = Adds Stripe Connect (https://stripe.com/connect) payments through Drupal Commerce module.
+core = 7.x
+package = Commerce
+dependencies[] = commerce
+dependencies[] = rules
+features[features_api][] = api:2
+project path = sites/dev.localhost/modules

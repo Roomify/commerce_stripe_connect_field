@@ -1,0 +1,33 @@
+<?php
+/**
+ * @file
+ * Install, update, and uninstall functions for the commerce_stripe_connect_field module.
+ */
+
+/**
+ * Implements hook_field_schema().
+ */
+function commerce_stripe_connect_field_field_schema($field) {
+  return array(
+    'columns' => array(
+      'stripe_connect_access_token' => array(
+        'type' => 'varchar',
+        'length' => 2048,
+        'not null' => FALSE,
+        'sortable' => TRUE,
+      ),
+      'stripe_connect_user_id' => array(
+        'type' => 'varchar',
+        'length' => 2048,
+        'not null' => FALSE,
+        'sortable' => TRUE,
+      ),
+      'stripe_connect_publishable_key' => array(
+        'type' => 'varchar',
+        'length' => 2048,
+        'not null' => FALSE,
+        'sortable' => TRUE,
+      ),
+    ),
+  );
+}
