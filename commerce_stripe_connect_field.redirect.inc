@@ -24,19 +24,28 @@ function commerce_stripe_connect_field_process_redirect() {
       watchdog('commerce stripe connect field', $json->error_description, array(), WATCHDOG_ERROR);
     }
     else {
-      // Load field name from cookies
-      $field_name = $_COOKIE['Drupal_visitor_field'];
+    	// Load current user so that we can run additional security checks
+    	global $user;
       // Save to either node or user.
       if ($_COOKIE['Drupal_visitor_entity_type'] == 'node') {
         $edit = node_load($_COOKIE['Drupal_visitor_eid']);
-        $edit->field_stripe_connect[LANGUAGE_NONE][0]['stripe_connect_access_token'] = $json->access_token;
-        $edit->field_stripe_connect[LANGUAGE_NONE][0]['stripe_connect_publishable_key'] = $json->stripe_publishable_key;
-        $edit->field_stripe_connect[LANGUAGE_NONE][0]['stripe_connect_user_id'] = $json->stripe_user_id;
-        //Field attach update
-        field_attach_update('node', $edit);
+        // Let's run an additonal seurity check to make sure the user has update access to the nid set in the cookie.
+        if (node_access('update', $edit, $user)) {
+					$edit->field_stripe_connect[LANGUAGE_NONE][0]['stripe_connect_access_token'] = $json->access_token;
+					$edit->field_stripe_connect[LANGUAGE_NONE][0]['stripe_connect_publishable_key'] = $json->stripe_publishable_key;
+					$edit->field_stripe_connect[LANGUAGE_NONE][0]['stripe_connect_user_id'] = $json->stripe_user_id;
+					//Field attach update
+					field_attach_update('node', $edit);
+        }
+        else {
+					$stripe_message = array(
+					'message' => 'There was a problem updating you Stripe Connect info.',
+					'severity' => 'error',
+					);
+        }
       }
-      else {
-        $edit = user_load($_COOKIE['Drupal_visitor_eid']);
+      elseif ($_COOKIE['Drupal_visitor_entity_type'] == 'user') {
+        $edit = user_load($user->uid);
         $edit->field_stripe_connect[LANGUAGE_NONE][0]['stripe_connect_access_token'] = $json->access_token;
         $edit->field_stripe_connect[LANGUAGE_NONE][0]['stripe_connect_publishable_key'] = $json->stripe_publishable_key;
         $edit->field_stripe_connect[LANGUAGE_NONE][0]['stripe_connect_user_id'] = $json->stripe_user_id;
