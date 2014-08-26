@@ -268,7 +268,7 @@ function commerce_stripe_connect_field_submit_form_submit($payment_method, $orde
   $apikey = $payment_method['settings']['secret_key'];
 	// Invoke a Rules event which allows us to override the sitewide Stripe API key with a user's Stripe Connect key.
 	if (module_exists('rules')) {
-		$apikey = rules_invoke_event('commerce_stripe_connect_field_alter_api_key', $apikey);
+		$apikey = rules_invoke_component('commerce_stripe_connect_field_alter_api_key', $apikey);
 	}
 
   // Begin assembling charge parameters.
@@ -283,7 +283,7 @@ function commerce_stripe_connect_field_submit_form_submit($payment_method, $orde
 	// Invoke a Rules event which allows us to override the charge parameteres in order to add application fees etc.
 	// @see https://stripe.com/docs/connect/collecting-fees
 	if (module_exists('rules')) {
-		$c = rules_invoke_event('commerce_stripe_connect_field_alter_charge', $c);
+		$c = rules_invoke_component('commerce_stripe_connect_field_alter_charge', $c);
 	}
 
   // Begin charge transaction
