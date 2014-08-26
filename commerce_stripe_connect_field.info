@@ -4,4 +4,3 @@ core = 7.x
 package = Commerce
 dependencies[] = commerce
 dependencies[] = rules
-project path = sites/dev.localhost/modules
