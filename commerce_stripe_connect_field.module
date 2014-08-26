@@ -265,7 +265,7 @@ function commerce_stripe_connect_field_submit_form_submit($payment_method, $orde
     return FALSE;
   }
   
-  $apikey = $payment_method['settings']['secret_key']
+  $apikey = $payment_method['settings']['secret_key'];
 	// Invoke a Rules event which allows us to override the sitewide Stripe API key with a user's Stripe Connect key.
 	if (module_exists('rules')) {
 		$apikey = rules_invoke_event('commerce_stripe_connect_field_alter_api_key', $apikey);
