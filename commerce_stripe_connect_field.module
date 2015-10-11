@@ -100,7 +100,7 @@ function commerce_stripe_connect_field_field_formatter_info() {
 /**
  * Implements hook_field_formatter_view().
  *
- * This is jsut a dummy function that returns nothing. We have no need to display our vendor
+ * This is just a dummy function that returns nothing. We have no need to display our vendor
  * keys, nor would it smart to.
  *
  * @see commerce_stripe_connect_field_field_formatter_info()
@@ -209,45 +209,38 @@ function commerce_stripe_connect_field_submit(&$form, &$form_state) {
 function commerce_stripe_connect_field_reset_submit(&$form, &$form_state) {
   //Unset for node values
   if ($form_state['build_info']['form_id'] == 'page_node_form') {
-  	$edit = node_load($form['#node']->nid);
-		unset($edit->field_stripe_connect[LANGUAGE_NONE][0]['access_token']);
-		unset($edit->field_stripe_connect['und'][0]['stripe_user_id']);
-		unset($edit->field_stripe_connect['und'][0]['stripe_publishable_key']);
-		//Field attach update
-  	field_attach_update('node', $edit);
+    $edit = node_load($form['#node']->nid);
+    unset($edit->field_stripe_connect[LANGUAGE_NONE][0]['access_token']);
+    unset($edit->field_stripe_connect['und'][0]['stripe_user_id']);
+    unset($edit->field_stripe_connect['und'][0]['stripe_publishable_key']);
+
+    // Field attach update
+    field_attach_update('node', $edit);
   }
   // Unset for user values
   if ($form_state['build_info']['form_id'] == 'user_profile_form') {
-		$edit = user_load($form_state['build_info']['args'][0]->uid);
-		unset($edit->field_stripe_connect['und'][0]['access_token']);
-		unset($edit->field_stripe_connect['und'][0]['stripe_user_id']);
-		unset($edit->field_stripe_connect['und'][0]['stripe_publishable_key']);
-		//Field attach update
-		field_attach_update('user', $edit);
-	}
+    $edit = user_load($form_state['build_info']['args'][0]->uid);
+    unset($edit->field_stripe_connect['und'][0]['access_token']);
+    unset($edit->field_stripe_connect['und'][0]['stripe_user_id']);
+    unset($edit->field_stripe_connect['und'][0]['stripe_publishable_key']);
+    //Field attach update
+    field_attach_update('user', $edit);
+  }
   // Set message
   drupal_set_message(t('Your Stripe token has been reset'));
 }
 
 /**
- * Implements hook_commerce_payment_method_info().
+ * Implements hook_commerce_payment_method_info_alter().
+ *
+ * Use our payment submission callback instead of Commerce Stripe's.
  */
-function commerce_stripe_connect_field_commerce_payment_method_info() {
-  $payment_methods = array();
-
-  $payment_methods['commerce_stripe_connect'] = array(
-    'title' => _commerce_stripe_load_setting('display_title', t('Stripe Connect')),
-    'description' => t('Stripe Connect payment gateway'),
-    'active' => FALSE,
-    'terminal' => FALSE,
-    'offsite' => FALSE,
-  );
-
-  return $payment_methods;
+function commerce_stripe_connect_field_commerce_payment_method_info_alter(&$payment_methods) {
+  $payment_methods['commerce_stripe']['callbacks']['submit_form_submit'] = 'commerce_stripe_connect_submit_form_submit';
 }
 
 /**
- * Callback for Stipe Connect checkout form submission.
+ * Callback for Stripe checkout form submission.
  *
  * @payment_method
  *  Contains the payment method key needed to provide saved variables for the sitewide Stripe account.
@@ -258,53 +251,68 @@ function commerce_stripe_connect_field_commerce_payment_method_info() {
  * @charge
  *  Contains our charge parameters needed for a successful Stripe transaction.
  */
-function commerce_stripe_connect_field_submit_form_submit($payment_method, $order, $charge) {
-  // Check for required library
+function commerce_stripe_connect_submit_form_submit($payment_method, $pane_form, $pane_values, $order, $charge) {
+
+  // Invoke a Rules event which allows us to override the sitewide Stripe API key with a user's Stripe Connect key.
+  if (module_exists('rules')) {
+    if ($stripe_connect_key = rules_invoke_component('rules_commerce_stripe_connect_field_alter_api_key', $payment_method['settings']['secret_key'], $order)) {
+      $payment_method['settings']['secret_key'] = $stripe_connect_key[0];
+    }
+  }
+
   if (!commerce_stripe_load_library()) {
-    drupal_set_message(t('Error making the payment. Please contact the shop admin to proceed.'), 'error');
+    drupal_set_message(t('Error making the payment. Please contact shop admin to proceed.'), 'error');
     return FALSE;
   }
-  
-  $apikey = $payment_method['settings']['secret_key'];
-	// Invoke a Rules event which allows us to override the sitewide Stripe API key with a user's Stripe Connect key.
-	if (module_exists('rules')) {
-		$apikey = rules_invoke_component('commerce_stripe_connect_field_alter_api_key', $apikey);
-	}
 
   // Begin assembling charge parameters.
-  Stripe::setApiKey($apikey);
+  Stripe::setApiKey($payment_method['settings']['secret_key']);
+
+  $currency_code = $payment_method['settings']['stripe_currency'];
+  if (isset($charge['currency_code'])) {
+    $currency_code = $charge['currency_code'];
+  }
   $c = array(
     'amount' => $charge['amount'],
-    'currency' => $payment_method['settings']['stripe_currency'],
+    'currency' => $currency_code,
     'card' => $_POST['stripeToken'],
     'description' => t('Order Number: @order_number', array('@order_number' => $order->order_number)),
   );
-  
-	// Invoke a Rules event which allows us to override the charge parameteres in order to add application fees etc.
-	// @see https://stripe.com/docs/connect/collecting-fees
-	if (module_exists('rules')) {
-		$c = rules_invoke_component('commerce_stripe_connect_field_alter_charge', $c);
-	}
 
-  // Begin charge transaction
+  // Invoke a Rules event which allows us to add our Stripe Connect application fee.
+  // @see https://stripe.com/docs/connect/collecting-fees
+  if (module_exists('rules')) {
+    if ($application_fee = rules_invoke_component('rules_commerce_stripe_connect_field_alter_charge', $c['amount'], $order)) {
+      $c['application_fee'] = $application_fee[0];
+    }
+  }
+
   $transaction = commerce_payment_transaction_new('commerce_stripe', $order->order_id);
   $transaction->instance_id = $payment_method['instance_id'];
   $transaction->amount = $charge['amount'];
-  $transaction->currency_code = $charge['currency_code'];
+  $transaction->currency_code = $currency_code;
   try {
-    $response = Stripe_Charge::create($c);
-    $transaction->remote_id = $response->id;
-    $transaction->payload[REQUEST_TIME] = $response->__toJSON();
-    $transaction->message = t('Payment completed successfully.');
-    $transaction->status = COMMERCE_PAYMENT_STATUS_SUCCESS;
-    commerce_payment_transaction_save($transaction);
+    // Stripe does not appreciate $0 transfers.
+    if ($charge['amount'] > 0) {
+      $response = Stripe_Charge::create($c);
+      $transaction->remote_id = $response->id;
+      $transaction->payload[REQUEST_TIME] = $response->__toJSON();
+      $transaction->message = t('Payment completed successfully.');
+      $transaction->status = COMMERCE_PAYMENT_STATUS_SUCCESS;
+      commerce_payment_transaction_save($transaction);
+      $card_response = $response->card;
+    }
+    // If the total is $0 we just put the card on file.
+    else {
+      $card_response = $card;
+    }
   }
   catch (Exception $e) {
     drupal_set_message(t('We received the following error processing your card. Please enter your information again or try a different card.'), 'error');
     drupal_set_message(check_plain($e->getMessage()), 'error');
     watchdog('commerce_stripe', 'Following error received when processing card @stripe_error.', array('@stripe_error' => $e->getMessage()), WATCHDOG_NOTICE);
     $transaction->remote_id = $e->getHttpStatus();
-    $transaction->payload[REQUEST_TIME] = $e->json_body;
+    $transaction->payload[REQUEST_TIME] = $e->jsonBody;
     $transaction->message = t('Card processing error: @stripe_error', array('@stripe_error' => $e->getMessage()));
     $transaction->status = COMMERCE_PAYMENT_STATUS_FAILURE;
     commerce_payment_transaction_save($transaction);
