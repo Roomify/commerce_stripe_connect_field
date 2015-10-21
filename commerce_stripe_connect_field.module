@@ -21,7 +21,7 @@ function commerce_stripe_connect_field_menu() {
     'description' => 'Change these settings depending on test or live server',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('commerce_stripe_connect_field_admin_settings'),
-    'access arguments' => array('administer node'),
+    'access arguments' => array('configure stripe connect'),
     'file' => 'commerce_stripe_connect_field.admin.inc',
     'type' => MENU_NORMAL_ITEM,
   );
@@ -55,6 +55,10 @@ function commerce_stripe_connect_field_permission() {
     'view stripe fields' => array(
       'title' => t('Views Stripe Connect Fields'),
       'description' => t('Allow a site user to view Stripe Connect field after a Stripe account is connected.'),
+    ),
+    'configure stripe connect' => array(
+      'title' => t('Confgure Stripe Connect'),
+      'description' => t('Allow a site user to configure Stripe Connect.'),
     ),
   );
 }
