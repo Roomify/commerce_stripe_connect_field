@@ -1,4 +1,4 @@
-<?php 
+<?php
 /**
  * @file
  * Saves user Stripe Access Token when redirected by successful Stripe signup page.
@@ -24,24 +24,29 @@ function commerce_stripe_connect_field_process_redirect() {
       watchdog('commerce stripe connect field', $json->error_description, array(), WATCHDOG_ERROR);
     }
     else {
-    	// Load current user so that we can run additional security checks
-    	global $user;
+      // Load current user so that we can run additional security checks
+      global $user;
+
       // Save to either node or user.
       if ($_COOKIE['Drupal_visitor_entity_type'] == 'node') {
         $edit = node_load($_COOKIE['Drupal_visitor_eid']);
-        // Let's run an additonal seurity check to make sure the user has update access to the nid set in the cookie.
+
+        // Let's run an additonal security check to make sure the user has update access to the nid set in the cookie.
         if (node_access('update', $edit, $user)) {
-					$edit->field_stripe_connect[LANGUAGE_NONE][0]['stripe_connect_access_token'] = $json->access_token;
-					$edit->field_stripe_connect[LANGUAGE_NONE][0]['stripe_connect_publishable_key'] = $json->stripe_publishable_key;
-					$edit->field_stripe_connect[LANGUAGE_NONE][0]['stripe_connect_user_id'] = $json->stripe_user_id;
-					//Field attach update
-					field_attach_update('node', $edit);
+          $edit->field_stripe_connect[LANGUAGE_NONE][0]['stripe_connect_access_token'] = $json->access_token;
+          $edit->field_stripe_connect[LANGUAGE_NONE][0]['stripe_connect_publishable_key'] = $json->stripe_publishable_key;
+          $edit->field_stripe_connect[LANGUAGE_NONE][0]['stripe_connect_user_id'] = $json->stripe_user_id;
+          // Field attach update.
+          field_attach_update('node', $edit);
+
+          // Re-set cache for this node.
+          entity_load('node', array($edit->nid), array(), TRUE);
         }
         else {
-					$stripe_message = array(
-					'message' => 'There was a problem updating you Stripe Connect info.',
-					'severity' => 'error',
-					);
+          $stripe_message = array(
+          'message' => 'There was a problem updating you Stripe Connect info.',
+          'severity' => 'error',
+          );
         }
       }
       elseif ($_COOKIE['Drupal_visitor_entity_type'] == 'user') {
@@ -49,9 +54,13 @@ function commerce_stripe_connect_field_process_redirect() {
         $edit->field_stripe_connect[LANGUAGE_NONE][0]['stripe_connect_access_token'] = $json->access_token;
         $edit->field_stripe_connect[LANGUAGE_NONE][0]['stripe_connect_publishable_key'] = $json->stripe_publishable_key;
         $edit->field_stripe_connect[LANGUAGE_NONE][0]['stripe_connect_user_id'] = $json->stripe_user_id;
-        //Field attach update
+        // Field attach update.
         field_attach_update('user', $edit);
+
+        // Re-set cache for this user.
+        entity_load('user', array($edit->uid), array(), TRUE);
       }
+
       $stripe_message = array(
       'message' => 'Payments are now connected through Stripe Connect.',
       'severity' => 'status',

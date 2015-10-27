@@ -37,7 +37,7 @@ function commerce_stripe_connect_field_field_schema($field) {
  */
 function commerce_stripe_connect_field_install() {
   $t = get_t();
-  drupal_set_message($t("Successfully installed Stripe Connect. Be sure to set you APi keys: !link",
-    array( '!link' => l(t('Administer > Site configuration > Services > Stripe Connect'),  'admin/config/services/stripefield'))
+  drupal_set_message($t("Successfully installed Stripe Connect. Be sure to set your API keys: !link",
+    array('!link' => l(t('Administer > Site configuration > Services > Stripe Connect'),  'admin/config/services/stripefield'))
   ));
 }
