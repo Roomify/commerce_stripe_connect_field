@@ -157,7 +157,7 @@ function commerce_stripe_connect_field_field_widget_form(&$form, &$form_state, $
       '#attributes' => array('disabled' => 'disabled'),
       '#default_value' => isset($items[$delta]['stripe_connect_publishable_key']) ? $items[$delta]['stripe_connect_publishable_key'] : '',
     );
-      $element['stripe_customer_item'] = array(
+    $element['stripe_customer_item'] = array(
       '#type' => 'item',
       '#markup' => '<p>Your Stripe account setup is complete.</p><a href="https://manage.stripe.com/login" class="" target="_blank">View your account</a> <span class="glyphicon glyphicon-new-window"></span><p>If you need to switch to a different Stripe account, you can <a href="https://manage.stripe.com/logout" target="_blank">sign out of Stripe</a> <span class="glyphicon glyphicon-new-window"></span> and the reconnect using the button below.</p>',
     );
