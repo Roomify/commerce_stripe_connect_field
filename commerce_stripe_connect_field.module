@@ -186,7 +186,7 @@ function commerce_stripe_connect_field_field_widget_form(&$form, &$form_state, $
  * Callback for our Stripe Connect Field
  */
 function commerce_stripe_connect_field_submit(&$form, &$form_state) {
-  // Proceed with normal validation and save/update based on entity type
+  // Proceed with normal validation and save/update based on entity type.
   if ($form_state['build_info']['form_id'] == 'page_node_form') {
     node_form_submit($form, $form_state);
     $redirect = 'node/' . $form_state['nid'] . '/edit';
@@ -211,24 +211,31 @@ function commerce_stripe_connect_field_submit(&$form, &$form_state) {
  * Callback for reset button
  */
 function commerce_stripe_connect_field_reset_submit(&$form, &$form_state) {
-  //Unset for node values
+  // Unset for node values.
   if ($form_state['build_info']['form_id'] == 'page_node_form') {
     $edit = node_load($form['#node']->nid);
-    unset($edit->field_stripe_connect[LANGUAGE_NONE][0]['access_token']);
-    unset($edit->field_stripe_connect['und'][0]['stripe_user_id']);
-    unset($edit->field_stripe_connect['und'][0]['stripe_publishable_key']);
+    unset($edit->field_stripe_connect[LANGUAGE_NONE][0]['stripe_connect_access_token']);
+    unset($edit->field_stripe_connect['und'][0]['stripe_connect_user_id']);
+    unset($edit->field_stripe_connect['und'][0]['stripe_connect_publishable_key']);
 
-    // Field attach update
+    // Save field values.
     field_attach_update('node', $edit);
+
+    // Re-set cache for this node.
+    entity_load('node', array($edit->nid), array(), TRUE);
   }
-  // Unset for user values
+  // Unset for user values.
   if ($form_state['build_info']['form_id'] == 'user_profile_form') {
     $edit = user_load($form_state['build_info']['args'][0]->uid);
-    unset($edit->field_stripe_connect['und'][0]['access_token']);
-    unset($edit->field_stripe_connect['und'][0]['stripe_user_id']);
-    unset($edit->field_stripe_connect['und'][0]['stripe_publishable_key']);
-    //Field attach update
+    unset($edit->field_stripe_connect[LANGUAGE_NONE][0]['stripe_connect_access_token']);
+    unset($edit->field_stripe_connect[LANGUAGE_NONE][0]['stripe_connect_user_id']);
+    unset($edit->field_stripe_connect[LANGUAGE_NONE][0]['stripe_connect_publishable_key']);
+
+    // Field attach update.
     field_attach_update('user', $edit);
+
+    // Re-set cache for this user.
+    entity_load('user', array($edit->uid), array(), TRUE);
   }
   // Set message
   drupal_set_message(t('Your Stripe token has been reset'));
