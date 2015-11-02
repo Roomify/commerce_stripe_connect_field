@@ -8,3 +8,5 @@ Installation ------------
 Copy this to your module directory and then enable on the admin modules
 page.  Enter your Stripe Secret Key, Publishable Key, and app Client ID at
 admin/config/services/stripefield.
+
+NB: When adding a Stripe Connect Field to a node or user, it must have the machine name field_stripe_connect
