@@ -178,6 +178,19 @@ function commerce_stripe_connect_field_field_widget_form(&$form, &$form_state, $
       '#value' => t('Connect with Stripe'),
       '#submit' => array('commerce_stripe_connect_field_submit'),
     );
+    $element['payments_account']['info'] = array(
+      '#type' => 'item',
+      '#description' => t('Press this button to connect with Stripe.'),
+    );
+
+    // Disable the button if Stripe Connect is not yet configured.
+    if (!variable_get('commerce_stripe_connect_field_client_id')) {
+      $element['payments_account']['button']['#disabled'] = TRUE;
+      $element['payments_account']['info'] = array(
+        '#type' => 'item',
+        '#description' => t('You may connect with Stripe once the site admin has configured Stripe Connect.'),
+      );
+    }
   }
   return $element;
 }
