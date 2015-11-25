@@ -281,6 +281,7 @@ function commerce_stripe_connect_submit_form_submit($payment_method, $pane_form,
   if (module_exists('rules')) {
     if ($stripe_connect_key = rules_invoke_component('rules_commerce_stripe_connect_field_alter_api_key', $payment_method['settings']['secret_key'], $order)) {
       $payment_method['settings']['secret_key'] = $stripe_connect_key[0];
+      watchdog('commerce_stripe_connect_field', 'Over-rode Stripe API key');
     }
   }
 
@@ -313,6 +314,7 @@ function commerce_stripe_connect_submit_form_submit($payment_method, $pane_form,
   if (module_exists('rules')) {
     if ($application_fee = rules_invoke_component('rules_commerce_stripe_connect_field_alter_charge', $c['amount'], $order)) {
       $c['application_fee'] = $application_fee[0];
+      watchdog('commerce_stripe_connect_field', 'Added application fee with amount: !amount', array('!amount' => $application_fee[0]));
     }
   }
 
