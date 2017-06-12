@@ -300,7 +300,7 @@ function commerce_stripe_connect_submit_form_submit($payment_method, $pane_form,
   }
 
   // Begin assembling charge parameters.
-  Stripe::setApiKey($payment_method['settings']['secret_key']);
+  _commerce_stripe_set_api_key($payment_method);
 
   // Build a default description and offer modules the possibility to alter it.
   $description = t('Order Number: @order_number', array('@order_number' => $order->order_number));
@@ -348,7 +348,7 @@ function commerce_stripe_connect_submit_form_submit($payment_method, $pane_form,
   try {
     // Stripe does not appreciate $0 transfers.
     if ($charge['amount'] > 0) {
-      $response = Stripe_Charge::create($c);
+      $response = Stripe\Charge::create($c);
       $transaction->remote_id = $response->id;
       $transaction->payload[REQUEST_TIME] = $response->__toJSON();
       $transaction->message = t('Payment completed successfully.');
