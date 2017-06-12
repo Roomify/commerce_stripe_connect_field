@@ -327,6 +327,13 @@ function commerce_stripe_connect_submit_form_submit($payment_method, $pane_form,
     }
   }
 
+  // Let modules alter the charge object to add attributes.
+  drupal_alter('commerce_stripe_order_charge', $c, $order);
+
+  // Let modules alter the options object to add attributes.
+  $options = array();
+  drupal_alter('commerce_stripe_order_options', $options, $order);
+
   $transaction = commerce_payment_transaction_new('commerce_stripe', $order->order_id);
   $transaction->instance_id = $payment_method['instance_id'];
   $transaction->amount = $charge['amount'];
@@ -348,7 +355,7 @@ function commerce_stripe_connect_submit_form_submit($payment_method, $pane_form,
   try {
     // Stripe does not appreciate $0 transfers.
     if ($charge['amount'] > 0) {
-      $response = Stripe\Charge::create($c);
+      $response = Stripe\Charge::create($c, $options);
       $transaction->remote_id = $response->id;
       $transaction->payload[REQUEST_TIME] = $response->__toJSON();
       $transaction->message = t('Payment completed successfully.');
